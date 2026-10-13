@@ -1,0 +1,16 @@
+{
+  "name": "veridix-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "VERIDIX - AI-Powered Gatekeeping & Intelligent Verification Platform",
+  "scripts": {
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:client": "npm --prefix client run dev",
+    "build:backend": "npm --prefix backend run build",
+    "build:client": "npm --prefix client run build",
+    "test:backend": "npm --prefix backend run test",
+    "db:migrate": "npm --prefix backend exec prisma migrate dev",
+    "db:seed": "npm --prefix backend exec tsx prisma/seed.ts",
+    "db:up": "docker compose up -d"
+  }
+}

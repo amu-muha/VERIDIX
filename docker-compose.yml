@@ -1,0 +1,21 @@
+services:
+  veridix-db:
+    image: postgres:16-alpine
+    container_name: veridix-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: veridix
+      POSTGRES_PASSWORD: veridix
+      POSTGRES_DB: veridix_db
+    ports:
+      - "5435:5432"
+    volumes:
+      - veridix_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U veridix -d veridix_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  veridix_pgdata:

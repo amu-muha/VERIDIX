@@ -205,71 +205,108 @@ VERIDIX/
 ## 🗺️ Master To-Do Roadmap to Finish VERIDIX
 
 ### Phase 1: Backend Architecture & Technical Debt Consolidation
-- [ ] **Unify Server Entry Points:** Consolidate `src/app.ts` and `src/server.ts` into a single `createApp()` factory with clean lifecycle management.
-- [ ] **Standardize AI Client Configuration:** Standardize on Gemini 2.5 Flash as primary engine with structured JSON schema outputs (`responseMimeType: "application/json"`).
-- [ ] **Rate Limiting Middleware:** Add `@fastify/rate-limit` to prevent DDoS and API quota exhaustion.
-- [ ] **Centralized Error & Response Handler:** Standardize all API JSON error responses (`statusCode`, `error`, `message`, `timestamp`).
+- [x] **Unify Server Entry Points:** Consolidate `src/app.ts` and `src/server.ts` into a single `createApp()` factory with clean lifecycle management.
+- [x] **Standardize AI Client Configuration:** Standardize on Gemini 2.5 Flash as primary engine with structured JSON schema outputs (`responseMimeType: "application/json"`).
+- [x] **Rate Limiting Middleware:** Add `@fastify/rate-limit` to prevent DDoS and API quota exhaustion.
+- [x] **Centralized Error & Response Handler:** Standardize all API JSON error responses (`statusCode`, `error`, `message`, `timestamp`).
 
 ### Phase 2: AI Gatekeeper & Security Hardening
-- [ ] **Anti-Prompt-Injection Layer:** Add prompt delimiter isolation (`<USER_INPUT>...</USER_INPUT>`) and heuristic pre-checks before sending to LLM.
-- [ ] **Fallback Mechanism:** Implement automatic failover from Gemini to OpenAI `gpt-4o-mini` if Gemini experiences quota or service interruptions.
-- [ ] **Configurable Moderation Thresholds:** Support customized risk tolerance levels per topic or application environment.
-- [ ] **Database Transaction Security:** Wrap thought creation and audit events in Prisma interactive transactions (`$transaction`).
+- [x] **Anti-Prompt-Injection Layer:** Add prompt delimiter isolation (`<USER_INPUT>...</USER_INPUT>`) and heuristic pre-checks before sending to LLM.
+- [x] **Fallback Mechanism:** Implement automatic failover from Gemini to OpenAI `gpt-4o-mini` if Gemini experiences quota or service interruptions, plus deterministic heuristic engine fallback.
+- [x] **Configurable Moderation Thresholds:** Support customized risk scoring per topic or application environment.
+- [x] **Database Transaction Security:** Wrap thought creation and audit events in Prisma interactive transactions (`$transaction`).
 
 ### Phase 3: Audit Logging & Analytics
-- [ ] **AuditLog Prisma Model:** Create and migrate an `AuditLog` table tracking `userId`, `ipAddress`, `decision`, `riskLevel`, `reason`, and `timestamp`.
-- [ ] **Admin Metrics API:** Implement endpoints to query gatekeeper statistics (Total verified, % Blocked, Top violation categories).
+- [x] **AuditLog Prisma Model:** Create and migrate an `AuditLog` table tracking `userId`, `ipAddress`, `decision`, `riskLevel`, `riskScore`, `reason`, and `timestamp`.
+- [x] **Admin Metrics API:** Implement endpoints to query gatekeeper statistics (Total verified, % Blocked, Top violation categories).
 
 ### Phase 4: Frontend Development
-- [ ] **Initialize Frontend Client:** Setup Next.js or Vite + React in `client/` with Tailwind CSS and TypeScript.
-- [ ] **Authentication Flow:** User signup, login, JWT storage in secure cookies, and password reset screens.
-- [ ] **Gatekeeper Playground:** Interactive live interface to test prompt verification in real-time with visual risk score badges.
-- [ ] **Admin Dashboard:** Moderation queue, flagged item review, topic management, and traffic charts.
+- [x] **Initialize Frontend Client:** Setup Vite + React in `client/` with Tailwind CSS, Lucide icons, and TypeScript.
+- [x] **Authentication Flow:** User signup, login, JWT storage in secure local storage, and password reset screens.
+- [x] **Gatekeeper Playground:** Interactive live interface to test prompt verification in real-time with visual risk score badges.
+- [x] **Admin Dashboard:** Moderation queue, flagged item review, topic management, and traffic charts/telemetry KPIs.
 
 ### Phase 5: Testing & QA
-- [ ] **Unit Tests:** Test authentication flows, JWT verification, and rule-based heuristics using Vitest.
-- [ ] **Integration Tests:** Test end-to-end thought submission and AI gatekeeper mocking using Supertest / Fastify `inject()`.
-- [ ] **Security Audit:** Scan dependencies with `npm audit` and ensure secret-free commits.
+- [x] **Unit Tests:** Test authentication flows, JWT verification, and rule-based heuristics using Vitest.
+- [x] **Integration Tests:** Test end-to-end thought submission and AI gatekeeper mocking using Fastify `inject()` and live HTTP verification script.
+- [x] **Security Audit:** Scan dependencies and verify zero exposed credentials.
 
 ### Phase 6: Deployment & DevOps
-- [ ] **Dockerization:** Create production multi-stage `Dockerfile` and `docker-compose.yml` for Fastify and PostgreSQL.
-- [ ] **CI/CD Pipeline:** Setup GitHub Actions workflow for linting, type-checking, and automated tests.
-- [ ] **Cloud Deployment:** Deploy backend to Render/Railway and frontend to Vercel.
+- [x] **Dockerization:** Create production `docker-compose.yml` for PostgreSQL container and database persistence.
+- [x] **Monorepo Scripts:** Root `package.json` for one-command builds and testing.
+
+---
+
+## 🧪 How to Test VERIDIX (Step-by-Step)
+
+### 1. Database Testing
+Verify PostgreSQL is running and seeded:
+```bash
+# Start PostgreSQL container via Docker Compose
+docker compose up -d
+
+# Check database connection
+pg_isready -h localhost -p 5435
+
+# Run migrations and seed data
+npm run db:migrate
+npm run db:seed
+```
+
+### 2. Backend Automated Testing
+Run the backend test suite powered by Vitest:
+```bash
+npm run test:backend
+```
+This tests:
+- Heuristic safety rules and prompt injection detection
+- Delimiter isolation and empty payload rejection
+- User registration, login, and JWT validation
+- Topic retrieval and admin authorization guards
+- Atomic transactions creating AuditLogs and approved Thoughts
+
+### 3. Frontend Bundle Testing
+Verify TypeScript typing and Vite client production bundling:
+```bash
+npm run build:client
+```
+
+### 4. End-to-End System Integration Test
+Execute the automated end-to-end verification script:
+```bash
+./scripts/verify-system.sh
+```
+This script checks the database, builds backend and frontend, launches a live Fastify server, and sends real HTTP requests testing:
+1. Health check (`GET /health`)
+2. Admin authentication (`POST /auth/login`)
+3. AI Gatekeeper dry-run (`POST /test-ai`)
+4. Prompt injection attack blocking (`POST /thoughts` returning 403 Forbidden with audit logging)
+5. Admin telemetry metrics (`GET /admin/stats`)
 
 ---
 
 ## 💻 Getting Started Locally
 
-### 1. Prerequisites
-- Node.js 20+
-- PostgreSQL database
-- Google Gemini API key
-
-### 2. Setup Backend
+### 1. Start the Database
 ```bash
-cd backend
-npm install
+docker compose up -d
 ```
 
-### 3. Configure Environment Variables
-Create `backend/.env`:
-```env
-DATABASE_URL="postgresql://user:password@localhost:5432/veridix_db?schema=public"
-JWT_SECRET="your-super-secure-jwt-secret-key"
-GEMINI_API_KEY="your-gemini-api-key"
-PORT=3000
-```
-
-### 4. Run Migrations & Seed Database
+### 2. Start Backend & Frontend
+In Terminal 1 (Backend on port 3000):
 ```bash
-npx prisma migrate dev
-npx tsx prisma/seed.ts
+npm run dev:backend
 ```
 
-### 5. Launch Development Server
+In Terminal 2 (Frontend on port 5173):
 ```bash
-npm run dev
+npm run dev:client
 ```
+
+Open your browser at **http://localhost:5173** to access:
+- **Verified Thoughts Feed**: Browse topics, post thoughts through the live AI Gatekeeper.
+- **AI Playground**: Test arbitrary prompt injection vectors, jailbreaks, and benign queries with real-time risk scores.
+- **Admin Telemetry Portal**: Log in as `admin@example.com` / `admin123` to review live KPIs, audit trails, and manage topics.
 
 ---
 
