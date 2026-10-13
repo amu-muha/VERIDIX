@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import bcrypt from "bcrypt";
+import * as bcrypt from "bcrypt";
 import crypto from "crypto";
 import { prisma } from "../db.js";
 

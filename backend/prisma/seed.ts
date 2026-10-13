@@ -1,5 +1,5 @@
 import { prisma } from "../src/db.js";
-import bcrypt from "bcrypt";
+import * as bcrypt from "bcrypt";
 
 async function main() {
   console.log("🌱 Seeding VERIDIX database...");

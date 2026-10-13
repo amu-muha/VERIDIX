@@ -10,7 +10,10 @@
     "build:client": "npm --prefix client run build",
     "test:backend": "npm --prefix backend run test",
     "db:migrate": "npm --prefix backend exec prisma migrate dev",
-    "db:seed": "npm --prefix backend exec tsx prisma/seed.ts",
+    "db:seed": "npm --prefix backend run seed",
     "db:up": "docker compose up -d"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0"
   }
 }
