@@ -1,11 +1,8 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 datasource db {
-  provider = "postgresql" // or "mysql" or "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -14,16 +11,16 @@ generator client {
 }
 
 model User {
-  id       Int     @id @default(autoincrement())
-  email    String  @unique
-  name     String?
-  password String
-  role     String  @default("user")
-
+  id               Int       @id @default(autoincrement())
+  email            String    @unique
+  name             String?
+  password         String
+  role             String    @default("user")
   resetToken       String?
   resetTokenExpiry DateTime?
 
-  thoughts Thought[]
+  thoughts  Thought[]
+  auditLogs AuditLog[]
 }
 
 model Topic {
@@ -47,4 +44,20 @@ model Thought {
   topic Topic @relation(fields: [topicId], references: [id])
 
   createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id           Int      @id @default(autoincrement())
+  userId       Int?
+  action       String   @default("CONTENT_VERIFICATION")
+  inputContent String
+  riskLevel    String   // "LOW" | "MEDIUM" | "HIGH"
+  riskScore    Int      @default(0)
+  decision     String   // "SAFE" | "BLOCK"
+  category     String?
+  reason       String?
+  ipAddress    String?
+  timestamp    DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
 }
