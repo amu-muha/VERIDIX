@@ -73,7 +73,7 @@ export async function authRoutes(server: FastifyInstance) {
       }
 
       // Generate JWT
-      const token = server.jwt.sign({ sub: user.id, role: user.role });
+      const token = (server as any).jwt.sign({ sub: user.id, role: user.role });
 
       return reply.send({
         token,
@@ -92,7 +92,7 @@ export async function authRoutes(server: FastifyInstance) {
   // ----------------------------------------------------------------
   server.get("/me", { preHandler: [server.authenticate] }, async (request, reply) => {
     try {
-      const userPayload = request.user as { sub: number | string; role: string };
+      const userPayload = (request as any).user as { sub: number | string; role: string };
       const user = await prisma.user.findUnique({
         where: { id: Number(userPayload.sub) },
         select: { id: true, email: true, name: true, role: true },

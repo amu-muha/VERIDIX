@@ -37,7 +37,7 @@ export async function thoughtRoutes(server: FastifyInstance) {
   // 2. POST /thoughts - Submit thought through VERIDIX AI Gatekeeper
   server.post("/thoughts", { preHandler: [server.authenticate] }, async (request, reply) => {
     const { content, topicId } = request.body as { content: string; topicId: number };
-    const user = request.user as { sub: number | string; role: string };
+    const user = (request as any).user as { sub: number | string; role: string };
     const userId = Number(user.sub);
 
     if (!content || typeof content !== "string" || content.trim().length === 0) {
@@ -61,7 +61,7 @@ export async function thoughtRoutes(server: FastifyInstance) {
       const evaluation = await evaluateContent(content);
 
       // 2. Database Transaction: Persist AuditLog and Thought
-      const result = await prisma.$transaction(async (tx) => {
+      const result = await prisma.$transaction(async (tx: any) => {
         // Record audit trail
         const audit = await tx.auditLog.create({
           data: {
