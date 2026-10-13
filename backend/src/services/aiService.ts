@@ -13,14 +13,18 @@ export interface GatekeeperEvaluation {
 // Common patterns indicative of prompt injection, jailbreaks, and malicious exploits
 const INJECTION_PATTERNS = [
   /ignore\s+(all\s+)?(previous|prior|above)\s+instructions/i,
+  /disregard\s+(all\s+)?(previous|prior|above)\s+instructions/i,
+  /forget\s+(all\s+)?(previous|prior|above)\s+instructions/i,
   /system\s*:\s*you\s+are/i,
   /you\s+are\s+now\s+(unfiltered|dan|jailbreak)/i,
-  /print\s+(system\s+prompt|instructions|database|secret)/i,
-  /reveal\s+(api\s+key|password|env)/i,
+  /print\s+(system\s+prompt|instructions|database|secret|password)/i,
+  /reveal\s+(api\s+key|password|env|secret|credentials)/i,
   /bypass\s+safety\s+filter/i,
   /<script[\s\S]*?>[\s\S]*?<\/script>/i,
   /drop\s+table\s+/i,
   /union\s+select\s+/i,
+  /<\/?system>/i,
+  /<\/?user_input>/i,
 ];
 
 const VIOLENCE_OR_HATE_PATTERNS = [
@@ -98,7 +102,7 @@ function sanitizeInput(content: string): string {
 /**
  * Primary Gatekeeper verification workflow:
  * 1. Heuristic Pre-filter
- * 2. Google Gemini 2.5 Flash / 1.5 Flash
+ * 2. Google Gemini 2.5 Flash (fallback to 1.5 Flash)
  * 3. Fallback: OpenAI gpt-4o-mini
  * 4. Fallback: Resilient Heuristic Engine
  */
@@ -115,9 +119,9 @@ export async function evaluateContent(content: string): Promise<GatekeeperEvalua
     };
   }
 
-  // Step 1: Pre-filter obvious high-risk attacks
+  // Step 1: Pre-filter obvious high-risk attacks and malformed payloads
   const fastPreCheck = heuristicCheck(trimmed);
-  if (fastPreCheck.decision === "BLOCK" && fastPreCheck.riskScore >= 90) {
+  if (fastPreCheck.decision === "BLOCK") {
     return fastPreCheck;
   }
 
@@ -146,16 +150,27 @@ Respond ONLY with valid JSON conforming to this schema:
   if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim() !== "") {
     try {
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      // Try gemini-2.5-flash or gemini-1.5-flash
-      const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
-        generationConfig: {
-          responseMimeType: "application/json",
-          temperature: 0.1,
-        },
-      });
+      let result;
+      try {
+        const model = genAI.getGenerativeModel({
+          model: "gemini-2.5-flash",
+          generationConfig: {
+            responseMimeType: "application/json",
+            temperature: 0.1,
+          },
+        });
+        result = await model.generateContent(promptText);
+      } catch {
+        const fallbackModel = genAI.getGenerativeModel({
+          model: "gemini-1.5-flash",
+          generationConfig: {
+            responseMimeType: "application/json",
+            temperature: 0.1,
+          },
+        });
+        result = await fallbackModel.generateContent(promptText);
+      }
 
-      const result = await model.generateContent(promptText);
       const rawText = result.response.text();
       const cleanJson = rawText.replace(/```json|```/g, "").trim();
       const parsed = JSON.parse(cleanJson);
