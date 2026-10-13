@@ -87,6 +87,27 @@ export async function authRoutes(server: FastifyInstance) {
   });
 
   // ----------------------------------------------------------------
+  // 2.5. CURRENT USER
+  // GET /auth/me
+  // ----------------------------------------------------------------
+  server.get("/me", { preHandler: [server.authenticate] }, async (request, reply) => {
+    try {
+      const userPayload = request.user as { sub: number | string; role: string };
+      const user = await prisma.user.findUnique({
+        where: { id: Number(userPayload.sub) },
+        select: { id: true, email: true, name: true, role: true },
+      });
+      if (!user) {
+        return reply.status(404).send({ message: "User not found" });
+      }
+      return reply.send({ user });
+    } catch (err) {
+      server.log.error(err);
+      return reply.status(500).send({ message: "Internal Server Error" });
+    }
+  });
+
+  // ----------------------------------------------------------------
   // 3. FORGOT PASSWORD (Request Reset)
   // POST /auth/forgot-password
   // ----------------------------------------------------------------

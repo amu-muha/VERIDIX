@@ -1,59 +1,96 @@
-import * as dotenv from 'dotenv';
+import * as dotenv from "dotenv";
 dotenv.config();
 
-import Fastify from 'fastify';
-import jwt from '@fastify/jwt';
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Fastify, { FastifyInstance } from "fastify";
+import cors from "@fastify/cors";
+import rateLimit from "@fastify/rate-limit";
+import jwt from "@fastify/jwt";
 
-// Import all route handlers
-import { authRoutes } from './routes/auth.js';
-import { thoughtRoutes } from './routes/thoughts.js';
-import { topicRoutes } from './routes/topics.js'; 
+// Route modules
+import { authRoutes } from "./routes/auth.js";
+import { thoughtRoutes } from "./routes/thoughts.js";
+import { topicRoutes } from "./routes/topics.js";
+import { adminRoutes } from "./routes/admin.js";
+import { aiTestRoutes } from "./routes/aiTest.js";
 
-const server = Fastify({ logger: true });
-
-// 1. JWT Setup
-server.register(jwt, {
-  secret: process.env.JWT_SECRET!
-});
-
-// 2. Auth Decorator
-server.decorate("authenticate", async (request: any, reply: any) => {
-  try {
-    await request.jwtVerify();
-  } catch (err) {
-    reply.status(401).send({ error: "Unauthorized: Invalid token." });
+declare module "fastify" {
+  interface FastifyInstance {
+    authenticate: (request: any, reply: any) => Promise<void>;
   }
-});
+}
 
-// 3. AI Gatekeeper Model Initialization
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+export async function createApp(): Promise<FastifyInstance> {
+  const app = Fastify({
+    logger: process.env.NODE_ENV === "test" ? false : true,
+  });
 
-const gatekeeperModel = genAI.getGenerativeModel(
-  { model: "gemini-2.5-flash" }, // 👈 Use the 2026 stable model
-  { apiVersion: "v1" }            // 👈 Force the stable V1 API
-);
+  // 1. CORS Configuration for Frontend Integration
+  await app.register(cors, {
+    origin: true, // Allow frontend dev server and production clients
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    credentials: true,
+  });
 
-server.decorate('gatekeeper', gatekeeperModel);
+  // 2. Rate Limiting Middleware
+  await app.register(rateLimit, {
+    max: 120,
+    timeWindow: "1 minute",
+  });
 
-// 4. Route Registration (Prefixes are applied here)
-server.register(authRoutes, { prefix: '/auth' });     // /auth/register, /auth/login
-server.register(topicRoutes, { prefix: '/topics' });   // /topics
-server.register(thoughtRoutes);                        // /thoughts (usually defined as /thoughts inside its file)
+  // 3. JWT Authentication Setup
+  await app.register(jwt, {
+    secret: process.env.JWT_SECRET || "veridix-fallback-jwt-secret-key-change-in-production",
+  });
 
-const start = async () => {
-  try {
-    const port = Number(process.env.PORT) || 3000;
-    await server.listen({ port, host: '0.0.0.0' });
-    
-    // Tip: This will log your actual route tree to the console so you can see the URLs
-    console.log("Registered Routes:\n", server.printRoutes());
-    
-    console.log(`🛡️  AI Gatekeeper Backend is ONLINE on port ${port}`);
-  } catch (err) {
-    server.log.error(err);
-    process.exit(1);
-  }
-};
+  // 4. Auth Decorator Guard
+  app.decorate("authenticate", async (request: any, reply: any) => {
+    try {
+      await request.jwtVerify();
+    } catch (err) {
+      reply.status(401).send({
+        statusCode: 401,
+        error: "Unauthorized",
+        message: "Invalid, expired, or missing authentication token.",
+      });
+    }
+  });
 
-start();
+  // 5. Health Check Endpoints
+  app.get("/", async () => {
+    return {
+      name: "VERIDIX AI Gatekeeper API",
+      status: "healthy",
+      version: "1.0.0",
+      timestamp: new Date().toISOString(),
+    };
+  });
+
+  app.get("/health", async () => {
+    return { status: "ok", timestamp: new Date().toISOString() };
+  });
+
+  // 6. Route Registration
+  await app.register(authRoutes, { prefix: "/auth" });
+  await app.register(topicRoutes, { prefix: "/topics" });
+  await app.register(thoughtRoutes);
+  await app.register(adminRoutes, { prefix: "/admin" });
+  await app.register(aiTestRoutes);
+
+  return app;
+}
+
+// If executed directly, bootstrap the server
+if (process.argv[1]?.endsWith("app.ts") || process.argv[1]?.endsWith("app.js")) {
+  const start = async () => {
+    try {
+      const app = await createApp();
+      const port = Number(process.env.PORT) || 3000;
+      await app.listen({ port, host: "0.0.0.0" });
+      console.log(`🛡️  VERIDIX AI Gatekeeper is ONLINE on http://localhost:${port}`);
+    } catch (err) {
+      console.error("Failed to start VERIDIX server:", err);
+      process.exit(1);
+    }
+  };
+  start();
+}
