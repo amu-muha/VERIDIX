@@ -1,5 +1,6 @@
 import { Shield, ShieldCheck, Terminal, LayoutDashboard, LogIn, LogOut, User as UserIcon } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface NavbarProps {
   currentTab: "feed" | "playground" | "admin";
@@ -11,7 +12,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, openA
   const { user, logout } = useAuth();
 
   return (
-    <header className="sticky top-0 z-40 w-full glass-panel border-b border-slate-800/80">
+    <header className="sticky top-0 z-40 w-full glass-panel border-b border-slate-800/80 transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Brand Logo */}
         <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setCurrentTab("feed")}>
@@ -24,7 +25,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, openA
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <span className="text-xl font-bold tracking-tight text-white font-mono">VERIDIX</span>
+              <span className="text-xl font-bold tracking-tight text-slate-100 font-mono">VERIDIX</span>
               <span className="text-xs px-1.5 py-0.5 rounded font-mono bg-cyan-950/80 text-cyan-400 border border-cyan-800/60">
                 v1.0
               </span>
@@ -39,7 +40,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, openA
             onClick={() => setCurrentTab("feed")}
             className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
               currentTab === "feed"
-                ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 shadow-sm"
+                ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 shadow-sm nav-tab-active"
                 : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
             }`}
           >
@@ -51,7 +52,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, openA
             onClick={() => setCurrentTab("playground")}
             className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
               currentTab === "playground"
-                ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 shadow-sm"
+                ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 shadow-sm nav-tab-active"
                 : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
             }`}
           >
@@ -74,8 +75,10 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, openA
           )}
         </nav>
 
-        {/* User / Authentication Actions */}
-        <div className="flex items-center space-x-3">
+        {/* User / Authentication Actions + Theme Toggle */}
+        <div className="flex items-center space-x-2 sm:space-x-3">
+          <ThemeToggle />
+
           {user ? (
             <div className="flex items-center space-x-3">
               <div className="flex items-center space-x-2 bg-slate-900/80 border border-slate-800 rounded-lg px-2.5 py-1">
